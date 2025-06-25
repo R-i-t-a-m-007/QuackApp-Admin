@@ -1,5 +1,5 @@
 import { useMemo, useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom"; // Import useNavigate
+import { useNavigate } from "react-router-dom";
 import {
   useReactTable,
   getCoreRowModel,
@@ -8,139 +8,175 @@ import {
   getFilteredRowModel,
   flexRender,
 } from "@tanstack/react-table";
-import axios from "axios"; 
+import axios from "axios";
 import { RiseLoader } from "react-spinners";
 
-const UserDetailTable = () => {
-  const [users, setUsers] = useState([]);
+
+const JobsTable = () => {
+  const [jobs, setJobs] = useState([]);
   const [filtering, setFiltering] = useState("");
-  const [isDeleteSuccess, setIsDeleteSuccess] = useState(false); // State for delete success modal
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [deleteJobId, setDeleteJobId] = useState(null);
+  const [isDeleteSuccess, setIsDeleteSuccess] = useState(false);
   const [loading, setLoading] = useState(true); // Loading state
   const navigate = useNavigate();
-  
 
-  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false); // State for delete confirmation modal
-  const [deleteUserId, setDeleteUserId] = useState(null); // User ID for deletion
-
-  // Fetching data from User API
+  // Fetching data from Jobs API
   useEffect(() => {
-    const fetchUsers = async () => {
+    const fetchJobs = async () => {
       try {
-        const response = await axios.get("https://api.thequackapp.com/api/auth/users");
-        setUsers(response.data);
+        const response = await axios.get("https://api.thequackapp.com/api/jobs/all-jobs");
+        setJobs(response.data);
       } catch (error) {
-        console.error("Error fetching users:", error);
+        console.error("Error fetching jobs:", error);
       }
       finally{
         setLoading(false);
       }
     };
-  
-    fetchUsers();
+    fetchJobs();
   }, []);
-  
-  const data = useMemo(() => users, [users]);
+
+  const data = useMemo(() => jobs, [jobs]);
 
   // Table Columns
   const columns = useMemo(
     () => [
-      { accessorKey: "username", header: "Username" },
+      { accessorKey: "title", header: "Title" },
       {
-        accessorKey: "email",
-        header: "Email",
+        accessorKey: "description",
+        header: "Description",
         cell: ({ getValue }) => {
-          const email = getValue();
-          const truncatedEmail = email.length > 10 ? email.slice(0, email.length / 3) + "..." : email;
+          const description = getValue();
+          const truncatedDescription = description.length > 20
+            ? description.slice(0, 20) + "..."
+            : description;
           return (
             <div
               className="relative group cursor-pointer"
-              title={email} // Tooltip with full email
+              title={description}
             >
-              <span>{truncatedEmail}</span>
+              <span>{truncatedDescription}</span>
               <span className="absolute left-0 bg-gray-800 text-white text-xs rounded-md px-2 py-1 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                {email}
+                {description}
               </span>
             </div>
           );
         },
       },
-      { accessorKey: "phone", header: "Phone" },
-      { accessorKey: "package", header: "Package" },
+      { accessorKey: "location", header: "Location" },
       {
-        accessorKey: "createdAt",
-        header: "Created At",
+        accessorKey: "date",
+        header: "Date",
         cell: ({ getValue }) => {
           const date = new Date(getValue());
           return date.toLocaleDateString("en-UK");
         },
       },
-      { accessorKey: "userCode", header: "User Code" },
+      { accessorKey: "shift", header: "Shift" },
+      { accessorKey: "workersRequired", header: "Workers Required" },
       {
-        accessorKey: "image",
-        header: "Profile",
-        cell: ({ getValue }) => (
-          <img src={getValue()} alt="Profile" className="h-10 w-10 rounded-full mx-auto" />
-        ),
+        accessorKey: "workers",
+        header: "Workers Assigned",
+        cell: ({ getValue }) => {
+          const workersAssigned = getValue();
+          if (workersAssigned.length === 0) return "None";
+          return (
+            <div className="space-y-1">
+              {workersAssigned.map((worker) => (
+                <span key={worker._id} className="block text-sm text-gray-100">
+                  {worker.name}
+                </span>
+              ))}
+            </div>
+          );
+        },
       },
       {
-      header: "Actions",
-      cell: ({ row }) => (
-        <div className="flex justify-center space-x-2">
-          <button
-                onClick={() => navigate(`/user-profile/${row.original._id}`)}
+        accessorKey: "invitedWorkers",
+        header: "Invited Workers",
+        cell: ({ getValue }) => {
+          const invitedWorkers = getValue();
+          if (invitedWorkers.length === 0) return "None";
+          return (
+            <div className="space-y-1">
+              {invitedWorkers.map((worker) => (
+                <span key={worker._id} className="block text-sm text-gray-100">
+                  {worker.name}
+                </span>
+              ))}
+            </div>
+          );
+        },
+      },
+      {
+        accessorKey: "jobStatus",
+        header: "Status",
+        cell: ({ getValue }) =>
+          getValue() ? (
+            <span className="text-green-500 font-bold">Complete</span>
+          ) : (
+            <span className="text-red-500 font-bold">Incomplete</span>
+          ),
+      },
+      { accessorKey: "userCode", header: "User Code" },
+      {
+        header: "Actions",
+        cell: ({ row }) => (
+          <div className="flex justify-center space-x-2">
+            <button
+              onClick={() => navigate(`/job-profile/${row.original._id}`)}
               className="bg-green-500 text-white px-3 py-1 rounded hover:bg-green-600 transition"
             >
               View
-          </button>
-          <button
-            onClick={() => navigate(`/edit-user/${row.original._id}`)}
-            className="bg-blue-500 text-white px-3 py-1 rounded hover:bg-blue-600 transition"
-          >
-            Edit
-          </button>
-          <button
-            onClick={() => openDeleteModal(row.original._id)}
-            className="bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600 transition"
-          >
-            Delete
-          </button>
-        </div>
-      ),
-    },
+            </button>
+            <button
+              onClick={() => navigate(`/edit-job/${row.original._id}`)}
+              className="bg-blue-500 text-white px-3 py-1 rounded hover:bg-blue-600 transition"
+            >
+              Edit
+            </button>
+            <button
+              onClick={() => openDeleteModal(row.original._id)}
+              className="bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600 transition"
+            >
+              Delete
+            </button>
+          </div>
+        ),
+      },
     ],
     []
   );
-  
 
-  // Open delete confirmation modal
-  const openDeleteModal = (userId) => {
-    setDeleteUserId(userId);
+  // Delete functions
+  const openDeleteModal = (jobId) => {
+    setDeleteJobId(jobId);
     setIsDeleteModalOpen(true);
   };
 
-  // Close delete confirmation modal
   const closeDeleteModal = () => {
-    setDeleteUserId(null);
-    setIsDeleteModalOpen(false);0
-  };
-  // Delete Handler
-  const handleDelete = async () => {
-    if (deleteUserId) {
-      try {
-        const response = await axios.delete(`https://api.thequackapp.com/api/auth/usersadmin/${deleteUserId}`);
-        
-        if (response.status === 200) {
-          setUsers((prevUsers) => prevUsers.filter((user) => user._id !== deleteUserId));
-          setIsDeleteSuccess(true); // Show delete success modal
-          setTimeout(() => setIsDeleteSuccess(false), 2000); // Hide modal after 2 seconds
-        }
-      } catch (error) {
-        console.error("Error deleting user:", error);
-      }
-    }
-    closeDeleteModal(); // Close modal after delete
+    setDeleteJobId(null);
+    setIsDeleteModalOpen(false);
   };
 
+  const handleDelete = async () => {
+    if (deleteJobId) {
+      try {
+        const response = await axios.delete(
+          `https://api.thequackapp.com/api/jobs/job/${deleteJobId}`
+        );
+        if (response.status === 200) {
+          setJobs((prevJobs) => prevJobs.filter((job) => job._id !== deleteJobId));
+          setIsDeleteSuccess(true);
+          setTimeout(() => setIsDeleteSuccess(false), 2000);
+        }
+      } catch (error) {
+        console.error("Error deleting job:", error);
+      }
+    }
+    closeDeleteModal();
+  };
 
   // Create table instance
   const table = useReactTable({
@@ -166,14 +202,14 @@ const UserDetailTable = () => {
 
   return (
     <div className="bg-opacity-25 bg-black rounded-lg p-4 w-full min-h-[90vh] overflow-x-auto">
-      <h2 className="text-base font-bold mb-4 text-white">User Table</h2>
+      <h2 className="text-base font-bold mb-4 text-white">Jobs Table</h2>
 
       {/* Search Bar */}
       <input
         type="text"
         value={filtering}
         onChange={(e) => setFiltering(e.target.value)}
-        placeholder="Search by Username..."
+        placeholder="Search by Job Title..."
         className="border p-2 text-sm rounded mb-3 w-full md:w-1/3 focus:ring text-gray-100 bg-[#141833] focus:ring-blue-300 outline-none"
       />
 
@@ -196,29 +232,35 @@ const UserDetailTable = () => {
             ))}
           </thead>
           <tbody className="text-gray-200">
-            {table.getRowModel().rows.length === 0 ? (
-              <tr>
-                <td colSpan={columns.length} className="text-center text-base py-4 text-gray-100">
-                  Users record empty
-                </td>
-              </tr>
-            ) : (
+            {table.getRowModel().rows.length > 0 ? (
               table.getRowModel().rows.map((row) => (
                 <tr key={row.id} className="odd:bg-gray-900">
                   {row.getVisibleCells().map((cell) => (
-                    <td key={cell.id} className="p-2 text-center">
-                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                    <td
+                      key={cell.id}
+                      className="p-2 text-[10px] text-center"
+                    >
+                      {flexRender(
+                        cell.column.columnDef.cell,
+                        cell.getContext()
+                      )}
                     </td>
                   ))}
                 </tr>
               ))
+            ) : (
+              <tr>
+                <td
+                  colSpan={columns.length}
+                  className="text-center py-4 text-base text-gray-300"
+                >
+                  Jobs record empty
+                </td>
+              </tr>
             )}
           </tbody>
-
         </table>
       </div>
-
-      {/* Pagination */}
       <div className="flex justify-between items-center mt-4">
         <div>
           <span className="text-gray-200">
@@ -249,7 +291,8 @@ const UserDetailTable = () => {
           <div className="bg-white p-8 rounded-lg shadow-lg w-96 text-center">
             <h2 className="text-2xl font-bold text-red-600 mb-3">Are you sure?</h2>
             <p className="text-lg text-gray-700 mb-5">
-              Are you sure you want to delete this User? Workers under this User will be deleted too.
+              Are you sure you want to delete this worker? This action cannot
+              be undone.
             </p>
             <div className="flex justify-around">
               <button
@@ -269,7 +312,7 @@ const UserDetailTable = () => {
         </div>
       )}
 
-      {/* Delete Success Modal */}
+      {/* Success Notification */}
       {isDeleteSuccess && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
           <div className="bg-green-500 p-6 rounded-lg text-white">
@@ -281,4 +324,4 @@ const UserDetailTable = () => {
   );
 };
 
-export default UserDetailTable;
+export default JobsTable;
